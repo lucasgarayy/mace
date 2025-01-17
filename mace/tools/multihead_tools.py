@@ -141,6 +141,7 @@ def assemble_mp_data(
                 )
             logging.info(f"Materials Project descriptors to {cached_descriptors_path}")
         dataset_mp = cached_dataset_path
+        logging.info(f"dataset_mp in {dataset_mp} with type {type(dataset_mp)}")
         descriptors_mp = cached_descriptors_path
         msg = f"Using Materials Project dataset with {dataset_mp}"
         logging.info(msg)
@@ -202,7 +203,7 @@ def assemble_mace_data(
             c for c in os.path.basename(checkpoint_url) if c.isalnum() or c in "_."
         )
         cached_tarball_path = f"{cache_dir}/{checkpoint_url_name}_tar"
-        cached_dataset_path = Path(f"{cache_dir}/{checkpoint_url_name}")
+        cached_xyz_path = Path(f"{cache_dir}/train_large_neut_no_bad_clean.xyz")
 
         descriptors_url_name = "".join(
             c for c in os.path.basename(descriptors_url) if c.isalnum() or c in "_."
@@ -212,31 +213,27 @@ def assemble_mace_data(
         os.makedirs(cache_dir, exist_ok=True)
 
         # Download the tarball if not already cached
-        if not os.path.isfile(cached_tarball_path):
+        if not os.path.isfile(cached_xyz_path):
             logging.info("Downloading dataset tarball for finetuning...")
             urllib.request.urlretrieve(checkpoint_url, cached_tarball_path)
             logging.info(f"Downloaded dataset to {cached_tarball_path}")
-
-        # Extract the tarball contents if not already extracted
-        if not any(cached_dataset_path.glob("*.xyz")):
             logging.info("Extracting dataset tarball...")
             with tarfile.open(cached_tarball_path, "r:gz") as tar:
-                tar.extractall(path=cached_dataset_path)
-            logging.info(f"Extracted dataset to {cached_dataset_path}")
+                tar.extractall(path=cache_dir)
+            logging.info(f"Extracted dataset to {cache_dir}")
 
             # Delete the tar.gz file after extraction
             os.remove(cached_tarball_path)
+        else:
+            logging.info(f"MACE-OFF23 dataset found at {cache_dir}")
+        # Extract the tarball contents if not already extracted
 
         # Locate and cache the dataset file
-        dataset_files = list(cached_dataset_path.glob("*.xyz"))
-        if not dataset_files:
-            raise RuntimeError(f"No .xyz files found in extracted dataset at {cached_dataset_path}")
+        if not os.path.isfile(cached_xyz_path):
+            raise RuntimeError(f"No .xyz files found in extracted dataset at {cached_xyz_path}")
 
-        dataset_mace = Path(f'{cache_dir}/{dataset_files[0].name}')
-        if not dataset_mace.exists():
-            os.rename(dataset_files[0], dataset_mace)
 
-        logging.info(f"Using MACEOFF-23 dataset file: {dataset_mace}")
+        logging.info(f"Using MACEOFF-23 dataset file: {cached_xyz_path}")
 
         if not os.path.isfile(cached_descriptors_path):
             os.makedirs(cache_dir, exist_ok=True)
@@ -250,52 +247,50 @@ def assemble_mace_data(
                     f"Descriptors download failed, please check the URL {descriptors_url}"
                 )
             logging.info(f"Materials Project descriptors to {cached_descriptors_path}")
-            dataset_mp = cached_dataset_path
-            descriptors_mp = cached_descriptors_path
-            msg = f"Using MACEOFF-23 dataset with {dataset_mp}"
-            logging.info(msg)
-            # Load descriptors to ensure they are accessible
-            msg = f"Using Materials Project descriptors with {descriptors_mp}"
-            logging.info(msg)
-            config_pt_paths = [head.train_file for head in head_configs]
-            args_samples = {
-                "configs_pt": str(dataset_mace),
-                "configs_ft": config_pt_paths,
-                "num_samples": args.num_samples_pt,
-                "seed": args.seed,
-                "model": args.foundation_model,
-                "head_pt": "pbe_mp",
-                "head_ft": "Default",
-                "weight_pt": args.weight_pt_head,
-                "weight_ft": 1.0,
-                "filtering_type": "combination",
-                "output": f"mace_finetuning-{tag}.xyz",
-                "descriptors": cached_descriptors_path,
-                "subselect": args.subselect_pt,
-                "device": args.device,
-                "default_dtype": args.default_dtype,
-            }
 
-            # Select samples and prepare the dataset
-            select_samples(dict_to_namespace(args_samples))
-            collections_mp, _ = get_dataset_from_xyz(
-                work_dir=args.work_dir,
-                train_path=f"mace_finetuning-{tag}.xyz",
-                valid_path=None,
-                valid_fraction=args.valid_fraction,
-                config_type_weights=None,
-                test_path=None,
-                seed=args.seed,
-                energy_key="energy",
-                forces_key="forces",
-                stress_key="stress",
-                head_name="pt_head",
-                virials_key=args.virials_key,
-                dipole_key=args.dipole_key,
-                charges_key=args.charges_key,
-                keep_isolated_atoms=args.keep_isolated_atoms,
-            )
-            return collections_mp
+        descriptors_mp = cached_descriptors_path
+            # Load descriptors to ensure they are accessible
+        msg = f"Using Materials Project descriptors with {descriptors_mp}"
+        logging.info(msg)
+        dataset_mace = str(cached_xyz_path)
+        logging.info(f"dataset_mp in {dataset_mace} with type {type(dataset_mace)}")
+        config_pt_paths = [head.train_file for head in head_configs]
+        args_samples = {
+            "configs_pt": dataset_mace,
+            "configs_ft": config_pt_paths,
+            "num_samples": args.num_samples_pt,
+            "seed": args.seed,
+            "model": args.foundation_model,
+            "head_pt": "pbe_mp",
+            "head_ft": "Default",
+            "weight_pt": args.weight_pt_head,
+            "weight_ft": 1.0,
+            "filtering_type": "combination",
+            "output": f"mp_finetuning-{tag}.xyz",
+            "descriptors": descriptors_mp,
+            "subselect": args.subselect_pt,
+            "device": args.device,
+            "default_dtype": args.default_dtype,
+        }
+        select_samples(dict_to_namespace(args_samples))
+        collections_mp, _ = get_dataset_from_xyz(
+            work_dir=args.work_dir,
+            train_path=f"mp_finetuning-{tag}.xyz",
+            valid_path=None,
+            valid_fraction=args.valid_fraction,
+            config_type_weights=None,
+            test_path=None,
+            seed=args.seed,
+            energy_key="energy",
+            forces_key="forces",
+            stress_key="stress",
+            head_name="pt_head",
+            virials_key=args.virials_key,
+            dipole_key=args.dipole_key,
+            charges_key=args.charges_key,
+            keep_isolated_atoms=args.keep_isolated_atoms,
+        )
+        return collections_mp
 
     except Exception as exc:
         raise RuntimeError(
