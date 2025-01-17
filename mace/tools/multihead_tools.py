@@ -141,7 +141,6 @@ def assemble_mp_data(
                 )
             logging.info(f"Materials Project descriptors to {cached_descriptors_path}")
         dataset_mp = cached_dataset_path
-        logging.info(f"dataset_mp in {dataset_mp} with type {type(dataset_mp)}")
         descriptors_mp = cached_descriptors_path
         msg = f"Using Materials Project dataset with {dataset_mp}"
         logging.info(msg)
@@ -253,7 +252,6 @@ def assemble_mace_data(
         msg = f"Using Materials Project descriptors with {descriptors_mp}"
         logging.info(msg)
         dataset_mace = str(cached_xyz_path)
-        logging.info(f"dataset_mp in {dataset_mace} with type {type(dataset_mace)}")
         config_pt_paths = [head.train_file for head in head_configs]
         args_samples = {
             "configs_pt": dataset_mace,
