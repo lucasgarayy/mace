@@ -252,7 +252,7 @@ def assemble_mace_data(
             logging.info(f"Materials Project descriptors to {cached_descriptors_path}")
             dataset_mp = cached_dataset_path
             descriptors_mp = cached_descriptors_path
-            msg = f"Using Materials Project dataset with {dataset_mp}"
+            msg = f"Using MACEOFF-23 dataset with {dataset_mp}"
             logging.info(msg)
             # Load descriptors to ensure they are accessible
             msg = f"Using Materials Project descriptors with {descriptors_mp}"
