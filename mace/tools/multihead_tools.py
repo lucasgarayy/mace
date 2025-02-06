@@ -194,7 +194,6 @@ def assemble_mace_data(
 ) -> Dict[str, Any]:
     try:
         checkpoint_url = "https://www.repository.cam.ac.uk/bitstreams/b185b5ab-91cf-489a-9302-63bfac42824a/download"
-        descriptors_url = "https://github.com/ACEsuit/mace-mp/releases/download/mace_mp_0b/descriptors.npy"
         cache_dir = (
                 Path(os.environ.get("XDG_CACHE_HOME", "~/")).expanduser() / ".cache/mace"
             )
@@ -204,10 +203,6 @@ def assemble_mace_data(
         cached_tarball_path = f"{cache_dir}/{checkpoint_url_name}_tar"
         cached_xyz_path = Path(f"{cache_dir}/train_large_neut_no_bad_clean.xyz")
 
-        descriptors_url_name = "".join(
-            c for c in os.path.basename(descriptors_url) if c.isalnum() or c in "_."
-        )
-        cached_descriptors_path = f"{cache_dir}/{descriptors_url_name}"
 
         os.makedirs(cache_dir, exist_ok=True)
 
@@ -234,23 +229,6 @@ def assemble_mace_data(
 
         logging.info(f"Using MACEOFF-23 dataset file: {cached_xyz_path}")
 
-        if not os.path.isfile(cached_descriptors_path):
-            os.makedirs(cache_dir, exist_ok=True)
-            # download and save to disk
-            logging.info("Downloading MP descriptors for finetuning")
-            _, http_msg = urllib.request.urlretrieve(
-                descriptors_url, cached_descriptors_path
-            )
-            if "Content-Type: text/html" in http_msg:
-                raise RuntimeError(
-                    f"Descriptors download failed, please check the URL {descriptors_url}"
-                )
-            logging.info(f"Materials Project descriptors to {cached_descriptors_path}")
-
-        descriptors_mp = cached_descriptors_path
-            # Load descriptors to ensure they are accessible
-        msg = f"Using Materials Project descriptors with {descriptors_mp}"
-        logging.info(msg)
         dataset_mace = str(cached_xyz_path)
         config_pt_paths = [head.train_file for head in head_configs]
         args_samples = {
@@ -265,7 +243,7 @@ def assemble_mace_data(
             "weight_ft": 1.0,
             "filtering_type": "combination",
             "output": f"mp_finetuning-{tag}.xyz",
-            "descriptors": descriptors_mp,
+            "descriptors": None,
             "subselect": args.subselect_pt,
             "device": args.device,
             "default_dtype": args.default_dtype,
