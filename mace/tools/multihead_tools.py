@@ -230,6 +230,8 @@ def assemble_mace_data(
         logging.info(f"Using MACEOFF-23 dataset file: {cached_xyz_path}")
 
         dataset_mace = str(cached_xyz_path)
+        parse_mace_data = parse_ref(dataset_mace, dataset_mace)
+
         config_pt_paths = [head.train_file for head in head_configs]
         args_samples = {
             "configs_pt": dataset_mace,
@@ -272,3 +274,25 @@ def assemble_mace_data(
         raise RuntimeError(
             "Dataset tarball download, extraction, or descriptor loading failed, and no local resources found."
         ) from exc
+
+def parse_ref(path, output_path):
+    """
+    Parses an XYZ file and modifies the energy and forces labels to REF_energy and REF_forces.
+    
+    Args:
+        path (str): Path to the XYZ file.
+        output_path (str): path to output XYZ file.
+    """
+    with open(path, 'r') as file:
+        lines = file.readlines()
+    
+    new_lines = []
+    for line in lines:
+        if "energy" in line:
+            line = line.replace(" energy", " REF_energy")
+        if ":forces" in line:
+            line = line.replace(":forces", ":REF_forces")
+        new_lines.append(line)
+    
+    with open(output_path, 'w') as file:
+        file.writelines(new_lines)
